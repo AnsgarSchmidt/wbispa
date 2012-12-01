@@ -6,8 +6,8 @@
 #include <Streaming.h>
 
 ////////////////// Hardware Settings //////////////////////////////////
-// Dallas
-DeviceAddress TEMP_INDOOR = {0x10, 0xD2, 0x4B, 0x57, 0x02, 0x08, 0x00, 0xAF};
+#define TEMP_SENSOR_PLATE_1 {0x10, 0xD2, 0x4B, 0x57, 0x02, 0x08, 0x00, 0xAF}
+#define PI_VAL              ((3.1415926539*2)/1440)
 
 // Com
 #define COMRX_PIN                  0 // Serial Receive PREDEFINED
@@ -39,47 +39,66 @@ DeviceAddress TEMP_INDOOR = {0x10, 0xD2, 0x4B, 0x57, 0x02, 0x08, 0x00, 0xAF};
 #define FLOWER_4_PIN              A4 // Flower 4
 #define FLOWER_5_PIN              A5 // Flower 5
 
+#define NUM_PLATES 1
+
+struct Timer{
+  uint16_t delay;
+  uint32_t lastTime;
+};
+
+Timer sampleTimer;
+Timer calcTimer;
+
 ////////////////////////////////////////////////////////////
 // ENUM
 ////////////////////////////////////////////////////////////
 enum{
-   kCOMM_ERROR    = 000,
-   kACK           = 001,
-   kARDUINO_READY = 002,
-   kERR           = 003,
-   kREQUEST_TIME  = 004,
-   k5             = 005,
-   k6             = 006,
-   k7             = 007,
-   k8             = 010,
-   k9             = 011,
-   kSEND_CMDS_END,
+  kCOMM_ERROR    = 000,
+  kACK           = 001,
+  kARDUINO_READY = 002,
+  kERR           = 003,
+  kREQUEST_TIME  = 004,
+  k5             = 005,
+  k6             = 006,
+  k7             = 007,
+  k8             = 010,
+  k9             = 011,
+  kSEND_CMDS_END,
 };
 
 messengerCallbackFunction messengerCallbacks[] = {
-   set_time,   // 010
-   get_time,   // 011
-   get_temp,   // 012
-   NULL
+  set_time,   // 010
+  get_time,   // 011
+  get_temp,   // 012
+  get_pwm,    // 013
+  set_config, // 014
+  get_config, // 015
+  NULL
 };
 
-float setTemp     = 25;
-float setHeat     =  0;
-float currentTemp = 25;
-int   loopCount   =  0;
+struct Plate{
+  DeviceAddress sensor;
+  uint16_t      setTemp;
+  uint8_t       setPWM;
+  uint16_t      currentTemp;
+  uint16_t      maxTemp;
+  uint16_t      minTemp;
+  uint8_t       minPWM;
+  uint8_t       pwmPin;
+};
 
-char  field_separator   = ',';
-char  command_separator = ';';
-
-OneWire oneWire(TEMP_DATA_PIN);
-DallasTemperature sensors(&oneWire);
-CmdMessenger cmdMessenger = CmdMessenger(Serial, field_separator, command_separator);
+Plate plate[NUM_PLATES];
 
 ////////////////////////////////////////////////////////////////////
 // SETUP
 ////////////////////////////////////////////////////////////////////
+OneWire           oneWire(TEMP_DATA_PIN);
+DallasTemperature sensors(&oneWire);
+CmdMessenger      cmdMessenger = CmdMessenger(Serial, ',', ';');
+
 void setup(){
 
+  // Com
   Serial.begin(9600);   // Slow to make sure the connection is stable
   cmdMessenger.print_LF_CR();   // Make output more readable whilst debugging in Arduino Serial Monitor
   cmdMessenger.attach(kARDUINO_READY, arduino_ready);
@@ -87,35 +106,94 @@ void setup(){
   attach_callbacks(messengerCallbacks);
   arduino_ready();
 
+  // Sensors
+  // Dallas
+  uint8_t s[NUM_PLATES][8] = {
+    TEMP_SENSOR_PLATE_1  };
+  uint8_t p[NUM_PLATES]    = {
+    HEAT_PLATE_1_PWM_PIN  };
+  for(int i=0;i<NUM_PLATES;i++){
+    for(int j=0;j<8;j++){
+      plate[i].sensor[j]=s[i][j];
+    }
+    plate[i].pwmPin       = p[i];
+    plate[i].setTemp      = 2500;
+    plate[i].setPWM       = 255;
+    plate[i].currentTemp  = 2500;
+    plate[i].maxTemp      = 2500;
+    plate[i].minTemp      = 2500;
+    plate[i].minPWM       = 50;
+  }
   sensors.begin();
   sensors.setResolution(TEMP_12_BIT); // Global
-  if(checkSensor(TEMP_INDOOR)){
-     sensors.setResolution(TEMP_INDOOR ,TEMP_12_BIT);
+  for(int i=0;i<NUM_PLATES;i++){
+    if(checkSensor(plate[i].sensor)){
+      sensors.setResolution(plate[i].sensor ,TEMP_12_BIT);
+    }
   }
-  
+
+  // Time
   setSyncProvider( requestSync );
+
+  // Timers
+  sampleTimer.delay    = 10000L;
+  sampleTimer.lastTime = millis();
+  calcTimer.delay      = 60000L;
+  calcTimer.lastTime   = millis();
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////
 // LOOP
 //////////////////////////////////////////////////////////////////////////////////
 void loop(){
-
   cmdMessenger.feedinSerialData();
-  
-  currentTemp = getTemperature(TEMP_INDOOR);   
+  samplingHandling(); 
+  calc();
+}
 
-  if(currentTemp < setTemp){
-    setHeat = ((setTemp-currentTemp)*25)+50;
-    if(setHeat>255){
-      setHeat=255;
+///////////////////////////////////////////////////////////////////////////////////////
+///// Sampler
+///////////////////////////////////////////////////////////////////////////////////////
+void samplingHandling(){
+  if( (millis() - sampleTimer.lastTime) > sampleTimer.delay){
+
+    sampleTimer.lastTime = millis();
+
+    for(int i = 0; i < NUM_PLATES; i++){ 
+      plate[i].currentTemp = getTemperature(plate[i].sensor);   
+      if(plate[i].currentTemp < plate[i].setTemp){
+        plate[i].setPWM = 255 - ((plate[i].setTemp - plate[i].currentTemp) * 50);
+        if(plate[i].setPWM < plate[i].minPWM){
+          plate[i].setPWM = plate[i].minPWM;
+        }
+      }
+      else{
+        plate[i].setPWM = 255;
+      }
+      analogWrite(plate[i].pwmPin, plate[i].setPWM);
     }
-  }else{
-    setHeat = 0;
   }
-  
-  analogWrite(HEAT_PLATE_1_PWM_PIN, 255-setHeat);
-  
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+//// Calc
+/////////////////////////////////////////////////////////////////////////////////////////
+void calc(){
+  if( (millis() - calcTimer.lastTime) > calcTimer.delay){
+
+    calcTimer.lastTime = millis();
+
+    for(int i = 0; i < NUM_PLATES; i++){
+      if(timeStatus() != timeNotSet){
+        time_t    t  = now();
+        uint16_t  m  = hour(t) * 60 + minute(t);
+        float     c = (1 - cos(PI_VAL*m)) * 0.5;
+        uint16_t  s  = (plate[i].maxTemp - plate[i].minTemp) * c;
+        plate[i].setTemp = plate[i].minTemp+s;
+      }  
+    }
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -131,12 +209,12 @@ boolean checkSensor(DeviceAddress insensor){
   return true;
 }
 
-float getTemperature(DeviceAddress insensor){
+uint16_t getTemperature(DeviceAddress insensor){
   if(checkSensor(insensor)){
     sensors.requestTemperatures();
-    float temp = sensors.getTempC(insensor);
-    return temp;
-  }else{
+    return  sensors.getTempC(insensor) * 100;
+  }
+  else{
     return DEVICE_DISCONNECTED;
   }
 }
@@ -152,7 +230,8 @@ time_t requestSync(){
 //////////////////////////////////////
 void set_time(){
   while ( cmdMessenger.available() ){
-    char buf[350] = { '\0' };
+    char buf[350] = { 
+      '\0'     };
     cmdMessenger.copyString(buf, 350);
     if(buf[0]){ 
       cmdMessenger.sendCmd(kACK, buf);
@@ -171,16 +250,65 @@ void set_time(){
 }
 
 void get_time(){
-   char buf[100];
-   sprintf(buf, "DateTime:%04d-%02d-%02d %02d:%02d:%02d\0", year(),month(),day(),hour(),minute(),second());
-   cmdMessenger.sendCmd(kACK,buf);
+  char buf[100];
+  sprintf(buf, "DateTime:%04d-%02d-%02d %02d:%02d:%02d\0", year(),month(),day(),hour(),minute(),second());
+  cmdMessenger.sendCmd(kACK,buf);
 }
 
 void get_temp(){
-   char buf[100];
-   int t = currentTemp * 100;
-   sprintf(buf, "Temp:%04d\0",t);
-   cmdMessenger.sendCmd(kACK,buf);
+  char buf[20];
+  sprintf(buf, "Temp:%04d\0",plate[0].currentTemp);
+  cmdMessenger.sendCmd(kACK,buf);
+}
+
+void get_pwm(){
+  char buf[20];
+  sprintf(buf, "PWM:%04d\0",plate[0].setPWM);
+  cmdMessenger.sendCmd(kACK,buf);
+}
+
+void get_config(){
+  char buf[100];
+  sprintf(buf, "Config:%04d,%04d,%04d\0",plate[0].maxTemp,plate[0].minTemp,plate[0].minPWM);
+  cmdMessenger.sendCmd(kACK,buf);
+}
+
+void set_config(){
+  while ( cmdMessenger.available() ){
+    char buf[350] = { 
+      '\0'     };
+    cmdMessenger.copyString(buf, 350);
+    if(buf[0]){ 
+      cmdMessenger.sendCmd(kACK, buf);
+      uint16_t v;
+      char     c;
+      v=0;
+      for(int i=0; i < 4; i++){   
+        c = buf[i];          
+        if( c >= '0' && c <= '9'){   
+          v = (10 * v) + (c - '0');
+        }
+      }   
+      plate[0].maxTemp=v;
+      v=0;
+      for(int i=4; i < 8; i++){   
+        c = buf[i];          
+        if( c >= '0' && c <= '9'){   
+          v = (10 * v) + (c - '0');
+        }
+      }   
+      plate[0].minTemp=v;
+      v=0;
+      for(int i=8; i < 12; i++){   
+        c = buf[i];          
+        if( c >= '0' && c <= '9'){   
+          v = (10 * v) + (c - '0');
+        }
+      }   
+      plate[0].minPWM=v;
+      cmdMessenger.sendCmd(kACK,"config set");
+    }
+  }  
 }
 
 void arduino_ready(){
@@ -199,4 +327,5 @@ void attach_callbacks(messengerCallbackFunction* callbacks){
     i++;
   }
 }
+
 
