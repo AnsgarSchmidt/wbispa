@@ -58,11 +58,11 @@ enum{
   kARDUINO_READY = 002,
   kERR           = 003,
   kREQUEST_TIME  = 004,
-  k5             = 005,
-  k6             = 006,
-  k7             = 007,
-  k8             = 010,
-  k9             = 011,
+  kTEMP          = 005,
+  kPWM           = 006,
+  kCONFIG        = 007,
+  kTIME          = 010,
+  k              = 011,
   kSEND_CMDS_END,
 };
 
@@ -224,7 +224,6 @@ time_t requestSync(){
   return 0;
 }
 
-
 //////////////////////////////////////
 // Callback
 //////////////////////////////////////
@@ -252,25 +251,37 @@ void set_time(){
 void get_time(){
   char buf[100];
   sprintf(buf, "DateTime:%04d-%02d-%02d %02d:%02d:%02d\0", year(),month(),day(),hour(),minute(),second());
-  cmdMessenger.sendCmd(kACK,buf);
+  cmdMessenger.sendCmd(kTIME,buf);
 }
 
 void get_temp(){
-  char buf[20];
-  sprintf(buf, "Temp:%04d\0",plate[0].currentTemp);
-  cmdMessenger.sendCmd(kACK,buf);
+  uint8_t offset = 0;
+  char buf[NUM_PLATES*10+8];
+  sprintf(buf+offset, "Temp:%02d:",NUM_PLATES);
+  offset += 8;
+  for(int i = 0; i < NUM_PLATES; i++){
+   sprintf(buf+offset, "%04d:%04d:",plate[i].setTemp,plate[i].currentTemp);
+   offset += 10;
+  }
+  cmdMessenger.sendCmd(kTEMP,buf);
 }
 
 void get_pwm(){
-  char buf[20];
-  sprintf(buf, "PWM:%04d\0",plate[0].setPWM);
-  cmdMessenger.sendCmd(kACK,buf);
+  uint8_t offset = 0;
+  char buf[NUM_PLATES*4+8];
+  sprintf(buf+offset, "PWM:%02d:",NUM_PLATES);
+  offset += 7;
+  for(int i = 0; i< NUM_PLATES; i++){
+    sprintf(buf+offset, "%04d:",plate[i].setPWM);
+    offset += 5;
+  }
+  cmdMessenger.sendCmd(kPWM,buf);
 }
 
 void get_config(){
   char buf[100];
   sprintf(buf, "Config:%04d,%04d,%04d\0",plate[0].maxTemp,plate[0].minTemp,plate[0].minPWM);
-  cmdMessenger.sendCmd(kACK,buf);
+  cmdMessenger.sendCmd(kCONFIG,buf);
 }
 
 void set_config(){
