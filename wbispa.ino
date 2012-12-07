@@ -4,6 +4,8 @@
 #include <CmdMessenger.h>
 #include <Base64.h>
 #include <Streaming.h>
+#include <avr/wdt.h>
+#include <EEPROM.h>
 
 ////////////////// Hardware Settings //////////////////////////////////
 #define TEMP_SENSOR_PLATE_1 {0x10, 0xD2, 0x4B, 0x57, 0x02, 0x08, 0x00, 0xAF}
@@ -14,22 +16,22 @@
 #define COMTX_PIN                  1 // Serial Transmit PREDEFINED
 
 // Buttons
-#define D02_PIN                    2 //
-#define D03_PIN                    3 //
+#define FAN_1_INTERRUPT            2 // FAN 1 Interrupt
+#define FAN_1_PWM_PIN              3 // FAN 1 PWM
 
 // Temp 2 TWI
 #define TEMP_DATA_PIN              4 // DataPin for tempsensors
 
 // LED and PWMs
 #define HEAT_PLATE_1_PWM_PIN       5 // Heat Plate 1
-#define HEAT_PLATE_2_PWM_PIN       6 // Heat Plate 2
-#define HEAT_PLATE_1_INFO_PIN      7 // Info LED
-#define HEAT_PLATE_2_INFO_PIN      8 // Info LED
-#define TEMP_OK_PIN                9 // Temp OK
-#define FAN_1_PWM_PIN             10 // Fan 1
-#define FAN_2_PWM_PIN             11 // Fan 2
-#define FAN_1_INFO_PIN            12 // Info LED
-#define FAN_2_INFO_PIN            13 // Info LED
+#define D6                         6 //
+#define D7                         7 //
+#define D8                         8 //
+#define D9                         9 //
+#define D10                       10 //
+#define D11                       11 //
+#define D12                       12 //
+#define D13                       13 //
 
 // Analog
 #define SOLAR_PIN                 A0 // Solar cell
@@ -48,6 +50,7 @@ struct Timer{
 
 Timer sampleTimer;
 Timer calcTimer;
+Timer fanTimer;
 
 ////////////////////////////////////////////////////////////
 // ENUM
@@ -109,20 +112,21 @@ void setup(){
   // Sensors
   // Dallas
   uint8_t s[NUM_PLATES][8] = {
-    TEMP_SENSOR_PLATE_1  };
+    TEMP_SENSOR_PLATE_1          };
   uint8_t p[NUM_PLATES]    = {
-    HEAT_PLATE_1_PWM_PIN  };
+    HEAT_PLATE_1_PWM_PIN          };
   for(int i=0;i<NUM_PLATES;i++){
     for(int j=0;j<8;j++){
       plate[i].sensor[j]=s[i][j];
     }
+
     plate[i].pwmPin       = p[i];
     plate[i].setTemp      = 2500;
     plate[i].setPWM       = 255;
     plate[i].currentTemp  = 2500;
-    plate[i].maxTemp      = 2500;
-    plate[i].minTemp      = 2500;
-    plate[i].minPWM       = 50;
+    plate[i].minTemp      = EEPROM.read(i*5+0) + (EEPROM.read(i*5+1) << 8);
+    plate[i].maxTemp      = EEPROM.read(i*5+2) + (EEPROM.read(i*5+3) << 8);
+    plate[i].minPWM       = EEPROM.read(i*5+4);
   }
   sensors.begin();
   sensors.setResolution(TEMP_12_BIT); // Global
@@ -131,6 +135,8 @@ void setup(){
       sensors.setResolution(plate[i].sensor ,TEMP_12_BIT);
     }
   }
+  sensors.setWaitForConversion(true);
+
 
   // Time
   setSyncProvider( requestSync );
@@ -138,8 +144,12 @@ void setup(){
   // Timers
   sampleTimer.delay    = 10000L;
   sampleTimer.lastTime = millis();
-  calcTimer.delay      = 60000L;
+  calcTimer.delay      = 20000L;
   calcTimer.lastTime   = millis();
+  fanTimer.delay       = 1000L;
+  fanTimer.lastTime    = millis();
+
+  wdt_enable(WDTO_2S);
 
 }
 
@@ -147,9 +157,33 @@ void setup(){
 // LOOP
 //////////////////////////////////////////////////////////////////////////////////
 void loop(){
+  wdt_reset();
   cmdMessenger.feedinSerialData();
+  wdt_reset();
   samplingHandling(); 
+  wdt_reset();
   calc();
+  wdt_reset();
+  fanHandling();
+  wdt_reset();
+}
+
+/////////////////////////////////////////////////////////////
+// Fan
+/////////////////////////////////////////////////////////////
+void fanHandling(){
+  if( (millis() - fanTimer.lastTime) > fanTimer.delay){
+
+    fanTimer.lastTime = millis();
+
+    if (minute() == 52){
+      analogWrite(FAN_1_PWM_PIN, 255);
+    }
+    else{
+      analogWrite(FAN_1_PWM_PIN, 0);
+    }
+
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -161,9 +195,12 @@ void samplingHandling(){
     sampleTimer.lastTime = millis();
 
     for(int i = 0; i < NUM_PLATES; i++){ 
-      plate[i].currentTemp = getTemperature(plate[i].sensor);   
+      uint16_t newTemp = getTemperature(plate[i].sensor);
+      if(newTemp != DEVICE_DISCONNECTED){
+        plate[i].currentTemp = newTemp;
+      }
       if(plate[i].currentTemp < plate[i].setTemp){
-        plate[i].setPWM = 255 - ((plate[i].setTemp - plate[i].currentTemp) * 50);
+        plate[i].setPWM = 255 - (plate[i].setTemp - plate[i].currentTemp);
         if(plate[i].setPWM < plate[i].minPWM){
           plate[i].setPWM = plate[i].minPWM;
         }
@@ -212,6 +249,10 @@ boolean checkSensor(DeviceAddress insensor){
 uint16_t getTemperature(DeviceAddress insensor){
   if(checkSensor(insensor)){
     sensors.requestTemperatures();
+    float temp = sensors.getTempC(insensor);
+    if(temp == DEVICE_DISCONNECTED){
+      return DEVICE_DISCONNECTED;
+    }
     return  sensors.getTempC(insensor) * 100;
   }
   else{
@@ -230,7 +271,7 @@ time_t requestSync(){
 void set_time(){
   while ( cmdMessenger.available() ){
     char buf[350] = { 
-      '\0'     };
+      '\0'                     };
     cmdMessenger.copyString(buf, 350);
     if(buf[0]){ 
       cmdMessenger.sendCmd(kACK, buf);
@@ -256,19 +297,19 @@ void get_time(){
 
 void get_temp(){
   uint8_t offset = 0;
-  char buf[NUM_PLATES*10+8];
+  char buf[100];
   sprintf(buf+offset, "Temp:%02d:",NUM_PLATES);
   offset += 8;
   for(int i = 0; i < NUM_PLATES; i++){
-   sprintf(buf+offset, "%04d:%04d:",plate[i].setTemp,plate[i].currentTemp);
-   offset += 10;
+    sprintf(buf+offset, "%04d:%04d:",plate[i].setTemp,plate[i].currentTemp);
+    offset += 10;
   }
   cmdMessenger.sendCmd(kTEMP,buf);
 }
 
 void get_pwm(){
   uint8_t offset = 0;
-  char buf[NUM_PLATES*4+8];
+  char buf[100];
   sprintf(buf+offset, "PWM:%02d:",NUM_PLATES);
   offset += 7;
   for(int i = 0; i< NUM_PLATES; i++){
@@ -287,7 +328,7 @@ void get_config(){
 void set_config(){
   while ( cmdMessenger.available() ){
     char buf[350] = { 
-      '\0'     };
+      '\0'                     };
     cmdMessenger.copyString(buf, 350);
     if(buf[0]){ 
       cmdMessenger.sendCmd(kACK, buf);
@@ -318,6 +359,13 @@ void set_config(){
       }   
       plate[0].minPWM=v;
       cmdMessenger.sendCmd(kACK,"config set");
+      for(int i=0;i<NUM_PLATES;i++){
+        EEPROM.write(i*5+0,lowByte(plate[i].minTemp));
+        EEPROM.write(i*5+1,highByte(plate[i].minTemp));
+        EEPROM.write(i*5+2,lowByte(plate[i].maxTemp));
+        EEPROM.write(i*5+3,highByte(plate[i].maxTemp));
+        EEPROM.write(i*5+4,plate[i].minPWM);
+      }
     }
   }  
 }
@@ -338,5 +386,9 @@ void attach_callbacks(messengerCallbackFunction* callbacks){
     i++;
   }
 }
+
+
+
+
 
 
