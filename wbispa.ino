@@ -64,18 +64,30 @@ enum{
   kTEMP          = 005,
   kPWM           = 006,
   kCONFIG        = 007,
-  kTIME          = 010,
-  k              = 011,
+  kTIME          = 010, //  8
+  kSOLAR         = 011, //  9
+  kFLOWER        = 012, // 10
+  k11            = 013, // 11
+  k12            = 014, // 12
+  k13            = 015, // 13
+  k14            = 016, // 14
+  k15            = 017, // 15
+  k16            = 020, // 16
+  k17            = 021, // 17
+  k18            = 022, // 18
+  k19            = 023, // 19
   kSEND_CMDS_END,
 };
 
 messengerCallbackFunction messengerCallbacks[] = {
-  set_time,   // 010
-  get_time,   // 011
-  get_temp,   // 012
-  get_pwm,    // 013
-  set_config, // 014
-  get_config, // 015
+  set_time,   // 020
+  get_time,   // 021
+  get_temp,   // 022
+  get_pwm,    // 023
+  set_config, // 024
+  get_config, // 025
+  get_solar,  // 026
+  get_flower, // 027
   NULL
 };
 
@@ -137,7 +149,6 @@ void setup(){
   }
   sensors.setWaitForConversion(true);
 
-
   // Time
   setSyncProvider( requestSync );
 
@@ -165,7 +176,7 @@ void loop(){
   calc();
   wdt_reset();
   fanHandling();
-  wdt_reset();
+  wdt_reset(); 
 }
 
 /////////////////////////////////////////////////////////////
@@ -196,13 +207,15 @@ void samplingHandling(){
 
     for(int i = 0; i < NUM_PLATES; i++){ 
       uint16_t newTemp = getTemperature(plate[i].sensor);
-      if(newTemp != DEVICE_DISCONNECTED){
+      if(newTemp > 0 ){
         plate[i].currentTemp = newTemp;
       }
       if(plate[i].currentTemp < plate[i].setTemp){
-        plate[i].setPWM = 255 - (plate[i].setTemp - plate[i].currentTemp);
-        if(plate[i].setPWM < plate[i].minPWM){
+        int newPWM = 255 - (plate[i].setTemp - plate[i].currentTemp);
+        if(newPWM < plate[i].minPWM){
           plate[i].setPWM = plate[i].minPWM;
+        }else{
+          plate[i].setPWM = newPWM;
         }
       }
       else{
@@ -250,7 +263,7 @@ uint16_t getTemperature(DeviceAddress insensor){
   if(checkSensor(insensor)){
     sensors.requestTemperatures();
     float temp = sensors.getTempC(insensor);
-    if(temp == DEVICE_DISCONNECTED){
+    if(temp < 0){
       return DEVICE_DISCONNECTED;
     }
     return  sensors.getTempC(insensor) * 100;
@@ -291,17 +304,29 @@ void set_time(){
 
 void get_time(){
   char buf[100];
-  sprintf(buf, "DateTime:%04d-%02d-%02d %02d:%02d:%02d\0", year(),month(),day(),hour(),minute(),second());
+  sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d\0", year(),month(),day(),hour(),minute(),second());
   cmdMessenger.sendCmd(kTIME,buf);
+}
+
+void get_solar(){
+  char buf[100];
+  sprintf(buf, "%04d\0", analogRead(SOLAR_PIN));
+  cmdMessenger.sendCmd(kSOLAR,buf);
+}
+
+void get_flower(){
+  char buf[100];
+  sprintf(buf, "%04d,%04d\0", analogRead(FLOWER_1_PIN), analogRead(FLOWER_2_PIN));
+  cmdMessenger.sendCmd(kFLOWER,buf);
 }
 
 void get_temp(){
   uint8_t offset = 0;
   char buf[100];
-  sprintf(buf+offset, "Temp:%02d:",NUM_PLATES);
-  offset += 8;
+  sprintf(buf+offset, "%02d,",NUM_PLATES);
+  offset += 3;
   for(int i = 0; i < NUM_PLATES; i++){
-    sprintf(buf+offset, "%04d:%04d:",plate[i].setTemp,plate[i].currentTemp);
+    sprintf(buf+offset, "%04d,%04d,",plate[i].setTemp,plate[i].currentTemp);
     offset += 10;
   }
   cmdMessenger.sendCmd(kTEMP,buf);
@@ -310,10 +335,10 @@ void get_temp(){
 void get_pwm(){
   uint8_t offset = 0;
   char buf[100];
-  sprintf(buf+offset, "PWM:%02d:",NUM_PLATES);
-  offset += 7;
+  sprintf(buf+offset, "%02d,",NUM_PLATES);
+  offset += 3;
   for(int i = 0; i< NUM_PLATES; i++){
-    sprintf(buf+offset, "%04d:",plate[i].setPWM);
+    sprintf(buf+offset, "%04d,",plate[i].setPWM);
     offset += 5;
   }
   cmdMessenger.sendCmd(kPWM,buf);
@@ -321,7 +346,7 @@ void get_pwm(){
 
 void get_config(){
   char buf[100];
-  sprintf(buf, "Config:%04d,%04d,%04d\0",plate[0].maxTemp,plate[0].minTemp,plate[0].minPWM);
+  sprintf(buf, "%04d,%04d,%04d\0",plate[0].maxTemp,plate[0].minTemp,plate[0].minPWM);
   cmdMessenger.sendCmd(kCONFIG,buf);
 }
 
@@ -386,9 +411,4 @@ void attach_callbacks(messengerCallbackFunction* callbacks){
     i++;
   }
 }
-
-
-
-
-
 
