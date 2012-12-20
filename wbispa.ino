@@ -11,35 +11,26 @@
 #define TEMP_SENSOR_PLATE_1 {0x10, 0xD2, 0x4B, 0x57, 0x02, 0x08, 0x00, 0xAF}
 #define PI_VAL              ((3.1415926539*2)/1440)
 
-// Com
 #define COMRX_PIN                  0 // Serial Receive PREDEFINED
 #define COMTX_PIN                  1 // Serial Transmit PREDEFINED
-
-// Buttons
-#define FAN_1_INTERRUPT            2 // FAN 1 Interrupt
-#define FAN_1_PWM_PIN              3 // FAN 1 PWM
-
-// Temp 2 TWI
-#define TEMP_DATA_PIN              4 // DataPin for tempsensors
-
-// LED and PWMs
-#define HEAT_PLATE_1_PWM_PIN       5 // Heat Plate 1
+#define MOINSTURE                  2 // Moisture interrupt pin
+#define D3                         3 // 
+#define D4                         4 // 
+#define D5                         5 // 
 #define D6                         6 //
 #define D7                         7 //
-#define D8                         8 //
-#define D9                         9 //
-#define D10                       10 //
-#define D11                       11 //
-#define D12                       12 //
-#define D13                       13 //
-
-// Analog
-#define SOLAR_PIN                 A0 // Solar cell
-#define FLOWER_1_PIN              A1 // Flower 1
-#define FLOWER_2_PIN              A2 // Flower 2
-#define FLOWER_3_PIN              A3 // Flower 3
-#define FLOWER_4_PIN              A4 // Flower 4
-#define FLOWER_5_PIN              A5 // Flower 5
+#define TEMP_DATA_PIN              8 // Temp One Wire interface
+#define HEAT_PLATE_1_PWM_PIN       9 // PWM Pin Heat
+#define FAN_1_PWM_PIN             10 // PWM Pin Fan
+#define MOSI                      11 // Programm Mosi
+#define MISO                      12 // Programm Miso
+#define SCK                       13 // Programm SCK
+#define SOLAR_PIN                 A0 // Solar cell light measurement
+#define FLOWER_1_PIN              A1 // Flower 1 measurement
+#define FLOWER_2_PIN              A2 // Flower 2 measurement
+#define A3                        A3 // 
+#define SDA                       A4 // TWI SDA
+#define SCL                       A5 // TWI SCL
 
 #define NUM_PLATES 1
 
