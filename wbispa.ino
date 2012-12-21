@@ -34,6 +34,8 @@
 
 #define NUM_PLATES 1
 
+boolean time_needed = true;
+
 struct Timer{
   uint16_t delay;
   uint32_t lastTime;
@@ -265,7 +267,8 @@ uint16_t getTemperature(DeviceAddress insensor){
 }
 
 time_t requestSync(){
-  cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+  //cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+  time_needed = true;
   return 0;
 }
 
@@ -289,6 +292,7 @@ void set_time(){
       }   
       setTime(pctime); 
       cmdMessenger.sendCmd(kACK,"time_setting cmd recieved");
+      time_needed = false;
     }
   }
 }
@@ -303,12 +307,18 @@ void get_solar(){
   char buf[100];
   sprintf(buf, "%04d\0", analogRead(SOLAR_PIN));
   cmdMessenger.sendCmd(kSOLAR,buf);
+  if(time_needed){
+    cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+  }
 }
 
 void get_flower(){
   char buf[100];
   sprintf(buf, "%04d,%04d\0", analogRead(FLOWER_1_PIN), analogRead(FLOWER_2_PIN));
   cmdMessenger.sendCmd(kFLOWER,buf);
+  if(time_needed){
+    cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+  }  
 }
 
 void get_temp(){
@@ -321,6 +331,9 @@ void get_temp(){
     offset += 10;
   }
   cmdMessenger.sendCmd(kTEMP,buf);
+  if(time_needed){
+    cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+  }
 }
 
 void get_pwm(){
@@ -333,12 +346,18 @@ void get_pwm(){
     offset += 5;
   }
   cmdMessenger.sendCmd(kPWM,buf);
+  if(time_needed){
+    cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+  }
 }
 
 void get_config(){
   char buf[100];
   sprintf(buf, "%04d,%04d,%04d\0",plate[0].maxTemp,plate[0].minTemp,plate[0].minPWM);
   cmdMessenger.sendCmd(kCONFIG,buf);
+  if(time_needed){
+    cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+  }
 }
 
 void set_config(){
@@ -383,11 +402,15 @@ void set_config(){
         EEPROM.write(i*5+4,plate[i].minPWM);
       }
     }
-  }  
+  }
+  if(time_needed){
+    cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+  }
+  
 }
 
 void arduino_ready(){
-  cmdMessenger.sendCmd(kACK,"Arduino ready");
+  cmdMessenger.sendCmd(kACK,"WBISpa ready");
 }
 
 void unknownCmd(){
