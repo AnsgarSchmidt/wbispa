@@ -7,6 +7,7 @@ import threading
 import datetime
 import time
 import csv
+import os.path
 
 class ReceiveThread(threading.Thread):
   """Threaded serial receive"""
@@ -41,10 +42,14 @@ class TasksThread(threading.Thread):
    def run(self):
       while True:
          time.sleep(10)
-         self.queue.put("22;")
-         self.queue.put("23;")
-         self.queue.put("26;")
-         self.queue.put("27;")
+         self.queue.put("22;") // getTime
+         self.queue.put("23;") // getPWM
+         self.queue.put("26;") // getSolar
+         self.queue.put("27;") // getFlowers
+
+         if !os.path.exists():
+            
+
 
 api = twitter.Api(consumer_key='M6VHvhNpXOSuFHT0dFwQ', consumer_secret='3vji5YgYXDU4sFYAf0kU7HaZwf3cMsXWQPcLYWRAY', access_token_key='995619222-I4dvj9BCTgcvBzvrfANk3ClT1ooqoAkVY0KXysQU', access_token_secret='xYQbcQcovlc16OkrFKK6794guhMfwfEVtMZFAIVA')
 
@@ -103,7 +108,7 @@ while 1:
    if (command == 8):
      print "TIME----->"+line
    if (command == 9):
-     solarwriter.writerow((time.strftime("%s",time.localtime()),element[1]))
+     solarwriter.writerow((time.strftime("%s",time.localtime()),int(element[1])))
      fsolar.flush() 
    if (command == 10):
      flowerwriter.writerow((time.strftime("%s",time.localtime()),element[1]))

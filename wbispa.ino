@@ -116,10 +116,8 @@ void setup(){
 
   // Sensors
   // Dallas
-  uint8_t s[NUM_PLATES][8] = {
-    TEMP_SENSOR_PLATE_1          };
-  uint8_t p[NUM_PLATES]    = {
-    HEAT_PLATE_1_PWM_PIN          };
+  uint8_t s[NUM_PLATES][8] = {TEMP_SENSOR_PLATE_1  };
+  uint8_t p[NUM_PLATES]    = {HEAT_PLATE_1_PWM_PIN };
   for(int i=0;i<NUM_PLATES;i++){
     for(int j=0;j<8;j++){
       plate[i].sensor[j]=s[i][j];
@@ -309,6 +307,7 @@ void get_solar(){
   cmdMessenger.sendCmd(kSOLAR,buf);
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+    time_needed = false;
   }
 }
 
@@ -318,6 +317,7 @@ void get_flower(){
   cmdMessenger.sendCmd(kFLOWER,buf);
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+    time_needed = false;
   }  
 }
 
@@ -333,6 +333,7 @@ void get_temp(){
   cmdMessenger.sendCmd(kTEMP,buf);
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+    time_needed = false;
   }
 }
 
@@ -348,6 +349,7 @@ void get_pwm(){
   cmdMessenger.sendCmd(kPWM,buf);
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+    time_needed = false;
   }
 }
 
@@ -357,6 +359,7 @@ void get_config(){
   cmdMessenger.sendCmd(kCONFIG,buf);
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+    time_needed = false;
   }
 }
 
@@ -405,6 +408,7 @@ void set_config(){
   }
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+    time_needed = false;
   }
   
 }
