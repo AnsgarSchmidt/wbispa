@@ -297,13 +297,13 @@ void set_time(){
 
 void get_time(){
   char buf[100];
-  sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d\0", year(),month(),day(),hour(),minute(),second());
+  sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d", year(),month(),day(),hour(),minute(),second());
   cmdMessenger.sendCmd(kTIME,buf);
 }
 
 void get_solar(){
   char buf[100];
-  sprintf(buf, "%04d\0", analogRead(SOLAR_PIN));
+  sprintf(buf, "%04d,", analogRead(SOLAR_PIN));
   cmdMessenger.sendCmd(kSOLAR,buf);
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
@@ -313,7 +313,7 @@ void get_solar(){
 
 void get_flower(){
   char buf[100];
-  sprintf(buf, "%04d,%04d\0", analogRead(FLOWER_1_PIN), analogRead(FLOWER_2_PIN));
+  sprintf(buf, "%04d,%04d,", analogRead(FLOWER_1_PIN), analogRead(FLOWER_2_PIN));
   cmdMessenger.sendCmd(kFLOWER,buf);
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
@@ -355,7 +355,7 @@ void get_pwm(){
 
 void get_config(){
   char buf[100];
-  sprintf(buf, "%04d,%04d,%04d\0",plate[0].maxTemp,plate[0].minTemp,plate[0].minPWM);
+  sprintf(buf, "%04d,%04d,%04d,",plate[0].maxTemp,plate[0].minTemp,plate[0].minPWM);
   cmdMessenger.sendCmd(kCONFIG,buf);
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
@@ -365,8 +365,7 @@ void get_config(){
 
 void set_config(){
   while ( cmdMessenger.available() ){
-    char buf[350] = { 
-      '\0'                     };
+    char buf[350] = {'\0'};
     cmdMessenger.copyString(buf, 350);
     if(buf[0]){ 
       cmdMessenger.sendCmd(kACK, buf);
