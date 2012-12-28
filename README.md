@@ -1,4 +1,4 @@
 wbispa
 ======
 
-Terarium Environment controll
+Terrarium Environment controll
