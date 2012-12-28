@@ -47,7 +47,7 @@ class TasksThread(threading.Thread):
 
     def run(self):
         while True:
-            time.sleep(10)
+            time.sleep(30)
             self.queue.put("22;") # getTemp
             self.queue.put("23;") # getPWM
             self.queue.put("26;") # getSolar
@@ -182,14 +182,14 @@ while 1:
            file.close()
        if config.getboolean('MySQL','active'):
            con = _mysql.connect('127.0.0.1', 'wbispa', 'FuEWtZs8AefmXAXS', 'wbispa')
-           sql = 'INSERT INTO wbispa.measures (setTemp,currentTemp,pwm,flower1,flower2,solar)VALUES(%d,%d,%d,%d,%d,%d);' % (setTempValue,currentTempValue,pwmValue,flower1Value,flower2Value,solarValue)
+           sql = 'INSERT INTO wbispa.measures (setTemp,currentTemp,pwm,flower1,flower2,solar)VALUES(%f,%f,%d,%d,%d,%d);' % (float(setTempValue/100.0),float(currentTempValue/100.0),255-pwmValue,flower1Value,flower2Value,solarValue)
            con.query(sql)
            con.close()
        if config.getboolean('COSM','active'):
            pac = eeml.Cosm(config.get('COSM','api_url'), config.get('COSM','api_key'))
-           pac.update([eeml.Data('SetTemperature', setTempValue, unit=eeml.Celsius()),
-                       eeml.Data('CurrentTemperature', currentTempValue, unit=eeml.Celsius()),
-                       eeml.Data('PWM', pwmValue),
+           pac.update([eeml.Data('SetTemperature', float(setTempValue/100.0), unit=eeml.Celsius()),
+                       eeml.Data('CurrentTemperature', float(currentTempValue/100.0), unit=eeml.Celsius()),
+                       eeml.Data('PWM', 255-pwmValue),
                        eeml.Data('Solar', solarValue),
                        eeml.Data('FlowerWaterLevel1',flower1Value),
                        eeml.Data('FlowerWaterLevel2',flower2Value)])
