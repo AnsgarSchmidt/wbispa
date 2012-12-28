@@ -368,7 +368,6 @@ void set_config(){
     char buf[350] = {'\0'};
     cmdMessenger.copyString(buf, 350);
     if(buf[0]){ 
-      cmdMessenger.sendCmd(kACK, buf);
       uint16_t v;
       char     c;
       v=0;
