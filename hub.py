@@ -3,7 +3,6 @@
 import Queue
 import serial
 import threading
-#import datetime
 import time
 import csv
 import eeml
@@ -48,7 +47,7 @@ class TasksThread(threading.Thread):
 
     def run(self):
         while True:
-            time.sleep(5)
+            time.sleep(10)
             self.queue.put("22;") # getTemp
             self.queue.put("23;") # getPWM
             self.queue.put("26;") # getSolar
@@ -70,8 +69,8 @@ if not os.path.exists('wbispa.cfg'):
    config.set('CSV', 'filename','wbispa.csv')
    config.add_section('COSM')
    config.set('COSM','active', 'false')
-   config.set('COSM','API_KEY','insert key here')
-   config.set('COSM','API_URL','insert number here')
+   config.set('COSM','API_KEY','kjdwehdwuhed7d72dhhui2hdi2hd2idh29dh29dh2ddweidwendwd')
+   config.set('COSM','API_URL','/v2/feeds/12345.xml')
    config.add_section('MySQL')
    config.set('MySQL','active','false')
    config.set('MySQL','Server','127.0.0.1')
@@ -79,13 +78,13 @@ if not os.path.exists('wbispa.cfg'):
    config.set('MySQL','Username','wbispa')
    config.set('MySQL','Password','blub')
    with open('wbispa.cfg', 'wb') as configfile:
-    config.write(configfile)
+      config.write(configfile)
 
 config.read('wbispa.cfg')
 configReadTime = 0
 
 receiveQueue = Queue.Queue()
-sendQueue = Queue.Queue()
+sendQueue    = Queue.Queue()
 
 ser = serial.Serial(config.get('Hardware','Port'), config.getint('Hardware','Speed'))
 
@@ -101,22 +100,22 @@ tasks = TasksThread(sendQueue)
 tasks.setDaemon(True)
 tasks.start()
 
-setTempValue = 0
+setTempValue     = 0
 currentTempValue = 0
-pwmValue = 0
-solarValue = 0
-flower1Value = 0
-flower2Value = 0
+pwmValue         = 0
+solarValue       = 0
+flower1Value     = 0
+flower2Value     = 0
 
-setTempUpdated = False
+setTempUpdated     = False
 currentTempUpdated = False
-pwmUpdated = False
-solarUpdated = False
-flower1Updated = False
-flower2Updated = False
+pwmUpdated         = False
+solarUpdated       = False
+flower1Updated     = False
+flower2Updated     = False
 
 while 1:
-   line = str(receiveQueue.get())
+   line    = str(receiveQueue.get())
    element = line.split(',')
    command = int(element[0])
    if (command == 1):
@@ -134,15 +133,15 @@ while 1:
                 sendQueue.put(timestr)
    if (command == 5):
                 # Temp
-                num = int(element[1])
-                setTempValue = int(element[2])
-                setTempUpdated = True
-                currentTempValue = int(element[3])
+                num                = int(element[1])
+                setTempValue       = int(element[2])
+                setTempUpdated     = True
+                currentTempValue   = int(element[3])
                 currentTempUpdated = True
    if (command == 6):
                 # PWM
-                num = int(element[1])
-                pwmValue = int (element[2])
+                num        = int(element[1])
+                pwmValue   = int (element[2])
                 pwmUpdated = True
    if (command == 7):
                 # config on arduino board
@@ -157,26 +156,26 @@ while 1:
                 print "TIME----->" + line
    if (command == 9):
                 # solar value
-                solarValue = int(element[1])
+                solarValue   = int(element[1])
                 solarUpdated = True
    if (command == 10):
                 # flower level
-                flower1Value = int(element[1])
+                flower1Value   = int(element[1])
                 flower1Updated = True
-                flower2Value = int(element[2])
+                flower2Value   = int(element[2])
                 flower2Updated = True
 
    receiveQueue.task_done()
 
    if setTempUpdated == True and currentTempUpdated == True and pwmUpdated == True and solarUpdated == True and flower1Updated == True and flower2Updated == True:
-       setTempUpdated = False
+       setTempUpdated     = False
        currentTempUpdated = False
-       pwmUpdated = False
-       solarUpdated = False
-       flower1Updated = False
-       flower2Updated = False
+       pwmUpdated         = False
+       solarUpdated       = False
+       flower1Updated     = False
+       flower2Updated     = False
        if config.getboolean('CSV','active'):
-           file = open(config.get('CSV','filename'), 'a')
+           file      = open(config.get('CSV','filename'), 'a')
            csvwriter = csv.writer(file)
            csvwriter.writerow((time.strftime("%s",time.localtime()),setTempValue,currentTempValue,pwmValue,solarValue,flower1Value,flower2Value))
            file.flush()
