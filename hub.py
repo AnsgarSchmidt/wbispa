@@ -177,7 +177,7 @@ while 1:
        if config.getboolean('CSV','active'):
            file      = open(config.get('CSV','filename'), 'a')
            csvwriter = csv.writer(file)
-           csvwriter.writerow((time.strftime("%s",time.localtime()),setTempValue,currentTempValue,pwmValue,solarValue,flower1Value,flower2Value))
+           csvwriter.writerow((time.strftime("%s",time.localtime()),float(setTempValue/100.0),float(currentTempValue/100.0),255-pwmValue,solarValue,flower1Value,flower2Value))
            file.flush()
            file.close()
        if config.getboolean('MySQL','active'):
