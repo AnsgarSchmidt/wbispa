@@ -186,14 +186,17 @@ while 1:
            con.query(sql)
            con.close()
        if config.getboolean('COSM','active'):
-           pac = eeml.Cosm(config.get('COSM','api_url'), config.get('COSM','api_key'))
-           pac.update([eeml.Data('SetTemperature', float(setTempValue/100.0), unit=eeml.Celsius()),
-                       eeml.Data('CurrentTemperature', float(currentTempValue/100.0), unit=eeml.Celsius()),
-                       eeml.Data('PWM', 255-pwmValue),
-                       eeml.Data('Solar', solarValue),
-                       eeml.Data('FlowerWaterLevel1',flower1Value),
-                       eeml.Data('FlowerWaterLevel2',flower2Value)])
-           pac.put()
+           try:
+              pac = eeml.Cosm(config.get('COSM','api_url'), config.get('COSM','api_key'))
+              pac.update([eeml.Data('SetTemperature', float(setTempValue/100.0), unit=eeml.Celsius()),
+                          eeml.Data('CurrentTemperature', float(currentTempValue/100.0), unit=eeml.Celsius()),
+                          eeml.Data('PWM', 255-pwmValue),
+                          eeml.Data('Solar', solarValue),
+                          eeml.Data('FlowerWaterLevel1',flower1Value),
+                          eeml.Data('FlowerWaterLevel2',flower2Value)])
+              pac.put()
+           except:
+               print "Error talking to cosm.com:", sys.exc_info()[0]
 
    if os.path.getmtime('wbispa.cfg') > configReadTime:
        print "Config file changed"
