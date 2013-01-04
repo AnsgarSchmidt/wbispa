@@ -196,7 +196,7 @@ while 1:
                           eeml.Data('FlowerWaterLevel2',flower2Value)])
               pac.put()
            except:
-               print "Error talking to cosm.com:", sys.exc_info()[0]
+               print "Error talking to cosm.com"
 
    if os.path.getmtime('wbispa.cfg') > configReadTime:
        print "Config file changed"
