@@ -10,7 +10,6 @@ from twitter import *
 CONFIG_FILE = 'wbispa.cfg'
 if len(sys.argv) == 2:
     CONFIG_FILE = sys.argv[1]
-    print CONFIG_FILE
 
 config = ConfigParser.RawConfigParser()
 config.read(CONFIG_FILE)
