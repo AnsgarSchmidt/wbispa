@@ -81,6 +81,7 @@ if not os.path.exists('wbispa.cfg'):
    config.set('Twitter','consumer_key','See https://dev.twitter.com')
    config.set('Twitter','consumer_secret','See https://dev.twitter.com')
    config.add_section('PWMCalc')
+   config.set('PWMCalc','maxwatt','24')
    config.set('PWMCalc','duration','24')
    config.set('PWMCalc','price_per_kwh','20')
    with open('wbispa.cfg', 'wb') as configfile:
