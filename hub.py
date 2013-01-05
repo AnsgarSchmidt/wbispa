@@ -77,6 +77,12 @@ if not os.path.exists('wbispa.cfg'):
    config.set('MySQL','Database','wbispa')
    config.set('MySQL','Username','wbispa')
    config.set('MySQL','Password','blub')
+   config.add_section('Twitter')
+   config.set('Twitter','consumer_key','See https://dev.twitter.com')
+   config.set('Twitter','consumer_secret','See https://dev.twitter.com')
+   config.add_section('PWMCalc')
+   config.set('PWMCalc','duration','24')
+   config.set('PWMCalc','price_per_kwh','20')
    with open('wbispa.cfg', 'wb') as configfile:
       config.write(configfile)
 
