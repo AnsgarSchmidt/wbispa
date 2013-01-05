@@ -48,4 +48,4 @@ with open(config.get('CSV','filename'), 'rb') as csvfile:
      hours = str((workingtime - firsttime)/(60*60))
      price = (sumwattperhour / 1000.0) * (float(config.get('PWMCalc','price_per_kwh')))
      string = "In the last " + hours + " hours we used " + str(round(sumwattperhour,3)) + " #watt/hour or " + str(round(price,2)) + " Eurocent for the WBI smart home floor heating system. #hacking #arduino #smarthome"
-     #twitter.statuses.update(status=string)
+     twitter.statuses.update(status=string)
