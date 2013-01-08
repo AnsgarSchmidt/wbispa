@@ -14,11 +14,11 @@
 #define COMRX_PIN                  0 // Serial Receive PREDEFINED
 #define COMTX_PIN                  1 // Serial Transmit PREDEFINED
 #define MOINSTURE                  2 // Moisture interrupt pin
-#define D3                         3 // 
+#define FAN_1_HAL                  3 // Fan 1 interrupt for hal sensor
 #define D4                         4 // 
 #define D5                         5 // 
-#define D6                         6 //
-#define D7                         7 //
+#define FLOWER_POWER_1             6 // Activate Power for flow 1 measurement 
+#define FLOWER_POWER_2             7 // Activate Power for flow 2 measurement 
 #define TEMP_DATA_PIN              8 // Temp One Wire interface
 #define HEAT_PLATE_1_PWM_PIN       9 // PWM Pin Heat
 #define FAN_1_PWM_PIN             10 // PWM Pin Fan
@@ -44,6 +44,13 @@ struct Timer{
 Timer sampleTimer;
 Timer calcTimer;
 Timer fanTimer;
+Timer flowerTimer;
+
+uint16_t fanControll[60];
+
+uint8_t  flowerCounter = 0; 
+uint32_t flowerValue1  = 0;
+uint32_t flowerValue2  = 0;
 
 ////////////////////////////////////////////////////////////
 // ENUM
@@ -81,6 +88,7 @@ messengerCallbackFunction messengerCallbacks[] = {
   get_config, // 025
   get_solar,  // 026
   get_flower, // 027
+  set_fan,    // 028
   NULL
 };
 
@@ -150,6 +158,10 @@ void setup(){
   calcTimer.lastTime   = millis();
   fanTimer.delay       = 1000L;
   fanTimer.lastTime    = millis();
+  flowerTimer.delay    = 1000L;
+  flowerTimer.lastTime = millis();
+
+  fanControll[52] = 2048; // Dummy value after reset
 
   wdt_enable(WDTO_2S);
 
@@ -168,6 +180,33 @@ void loop(){
   wdt_reset();
   fanHandling();
   wdt_reset(); 
+  flowerHandling();
+  wdt_reset();
+}
+
+///////////////////////////////////////////////////////////////
+// Flower Handling
+///////////////////////////////////////////////////////////////
+void flowerHandling(){
+  if( (millis() - flowerTimer.lastTime) > flowerTimer.delay){
+    
+    flowerTimer.lastTime = millis();
+    
+    digitalWrite(FLOWER_POWER_1,HIGH);
+    digitalWrite(FLOWER_POWER_2,HIGH);
+    Serial.println(analogRead(FLOWER_1_PIN));
+    flowerValue1 += analogRead(FLOWER_1_PIN);
+    flowerValue2 += analogRead(FLOWER_2_PIN);
+    //digitalWrite(FLOWER_POWER_1,LOW);
+    //digitalWrite(FLOWER_POWER_2,LOW);
+    flowerCounter++;
+    
+    if(flowerCounter > 100){
+      flowerValue1  = 0;
+      flowerValue2  = 0;
+      flowerCounter = 0;
+    }
+  }
 }
 
 /////////////////////////////////////////////////////////////
@@ -178,7 +217,7 @@ void fanHandling(){
 
     fanTimer.lastTime = millis();
 
-    if (minute() == 52){
+    if (fanControll[minute()] > 0){ // Dummy until we handling with the interrupt handling
       analogWrite(FAN_1_PWM_PIN, 255);
     }
     else{
@@ -313,8 +352,18 @@ void get_solar(){
 
 void get_flower(){
   char buf[100];
-  sprintf(buf, "%04d,%04d,", analogRead(FLOWER_1_PIN), analogRead(FLOWER_2_PIN));
+
+  if(flowerCounter > 0){
+    sprintf(buf, "%04d,%04d,", flowerValue1/flowerCounter,flowerValue2/flowerCounter);
+  }else{
+    sprintf(buf, "%04d,%04d,", 0,0);
+  }
+  
+  flowerValue1=0;
+  flowerValue2=0;
+  flowerCounter=0;
   cmdMessenger.sendCmd(kFLOWER,buf);
+  
   if(time_needed){
     cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
     time_needed = false;
@@ -409,6 +458,14 @@ void set_config(){
     time_needed = false;
   }
   
+}
+
+void set_fan(){
+  cmdMessenger.sendCmd(kACK,"fan set");
+  if(time_needed){
+    cmdMessenger.sendCmd(kREQUEST_TIME,"request time");
+    time_needed = false;
+  }
 }
 
 void arduino_ready(){
