@@ -16,9 +16,9 @@
 #define MOINSTURE                  2 // Moisture interrupt pin
 #define FAN_1_HAL                  3 // Fan 1 interrupt for hal sensor
 #define D4                         4 // 
-#define FLOWER_POWER_1             5 // 
-#define FLOWER_POWER_2             6 // Activate Power for flow 1 measurement 
-#define FAN_INTERRUPT              7 // Activate Power for flow 2 measurement 
+#define FLOWER_POWER_1             5 // Activate Power for flow 1 measurement
+#define FLOWER_POWER_2             6 // Activate Power for flow 2 measurement 
+#define D7                         7 //
 #define TEMP_DATA_PIN              8 // Temp One Wire interface
 #define HEAT_PLATE_1_PWM_PIN       9 // PWM Pin Heat
 #define FAN_1_PWM_PIN             10 // PWM Pin Fan
@@ -158,10 +158,10 @@ void setup(){
   calcTimer.lastTime   = millis();
   fanTimer.delay       = 1000L;
   fanTimer.lastTime    = millis();
-  flowerTimer.delay    = 30000L; // One a minute is enough even for watering detection
+  flowerTimer.delay    = 30000L;
   flowerTimer.lastTime = millis();
 
-  fanControll[52] = 2048; // Dummy value after reset
+  fanControll[52] = 2048; // Dummy value after reset, no need to store in eprom
 
   wdt_enable(WDTO_2S);
 
@@ -194,12 +194,16 @@ void flowerHandling(){
     
     digitalWrite(FLOWER_POWER_1,HIGH);
     digitalWrite(FLOWER_POWER_2,HIGH);
-    delay(100);
+    wdt_reset();
+    delay(250);
+    wdt_reset();
     uint32_t flower1 = 0;
     uint32_t flower2 = 0;
     for(int i=0;i<100;i++){
-      flowerValue1 += analogRead(FLOWER_1_PIN);
-      flowerValue2 += analogRead(FLOWER_2_PIN);
+      wdt_reset();
+      flower1 += analogRead(FLOWER_1_PIN);
+      wdt_reset();
+      flower2 += analogRead(FLOWER_2_PIN);
     }
     digitalWrite(FLOWER_POWER_1,LOW);
     digitalWrite(FLOWER_POWER_2,LOW);    
@@ -207,7 +211,7 @@ void flowerHandling(){
     flowerValue2 += (flower2/100);
     flowerCounter++;
     
-    if(flowerCounter > 100){
+    if(flowerCounter > 200){
       flowerValue1  = 0;
       flowerValue2  = 0;
       flowerCounter = 0;
