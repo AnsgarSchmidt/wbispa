@@ -16,9 +16,9 @@
 #define MOINSTURE                  2 // Moisture interrupt pin
 #define FAN_1_HAL                  3 // Fan 1 interrupt for hal sensor
 #define D4                         4 // 
-#define D5                         5 // 
-#define FLOWER_POWER_1             6 // Activate Power for flow 1 measurement 
-#define FLOWER_POWER_2             7 // Activate Power for flow 2 measurement 
+#define FLOWER_POWER_1             5 // 
+#define FLOWER_POWER_2             6 // Activate Power for flow 1 measurement 
+#define FAN_INTERRUPT              7 // Activate Power for flow 2 measurement 
 #define TEMP_DATA_PIN              8 // Temp One Wire interface
 #define HEAT_PLATE_1_PWM_PIN       9 // PWM Pin Heat
 #define FAN_1_PWM_PIN             10 // PWM Pin Fan
@@ -158,7 +158,7 @@ void setup(){
   calcTimer.lastTime   = millis();
   fanTimer.delay       = 1000L;
   fanTimer.lastTime    = millis();
-  flowerTimer.delay    = 1000L;
+  flowerTimer.delay    = 30000L; // One a minute is enough even for watering detection
   flowerTimer.lastTime = millis();
 
   fanControll[52] = 2048; // Dummy value after reset
@@ -194,11 +194,17 @@ void flowerHandling(){
     
     digitalWrite(FLOWER_POWER_1,HIGH);
     digitalWrite(FLOWER_POWER_2,HIGH);
-    Serial.println(analogRead(FLOWER_1_PIN));
-    flowerValue1 += analogRead(FLOWER_1_PIN);
-    flowerValue2 += analogRead(FLOWER_2_PIN);
-    //digitalWrite(FLOWER_POWER_1,LOW);
-    //digitalWrite(FLOWER_POWER_2,LOW);
+    delay(100);
+    uint32_t flower1 = 0;
+    uint32_t flower2 = 0;
+    for(int i=0;i<100;i++){
+      flowerValue1 += analogRead(FLOWER_1_PIN);
+      flowerValue2 += analogRead(FLOWER_2_PIN);
+    }
+    digitalWrite(FLOWER_POWER_1,LOW);
+    digitalWrite(FLOWER_POWER_2,LOW);    
+    flowerValue1 += (flower1/100);
+    flowerValue2 += (flower2/100);
     flowerCounter++;
     
     if(flowerCounter > 100){
