@@ -158,7 +158,7 @@ void setup(){
   calcTimer.lastTime   = millis();
   fanTimer.delay       = 1000L;
   fanTimer.lastTime    = millis();
-  flowerTimer.delay    = 30000L;
+  flowerTimer.delay    = 20000L;
   flowerTimer.lastTime = millis();
 
   fanControll[52] = 2048; // Dummy value after reset, no need to store in eprom
@@ -191,7 +191,8 @@ void flowerHandling(){
   if( (millis() - flowerTimer.lastTime) > flowerTimer.delay){
     
     flowerTimer.lastTime = millis();
-    
+
+    uint8_t ITTERATIONS = 100;     
     digitalWrite(FLOWER_POWER_1,HIGH);
     digitalWrite(FLOWER_POWER_2,HIGH);
     wdt_reset();
@@ -199,7 +200,7 @@ void flowerHandling(){
     wdt_reset();
     uint32_t flower1 = 0;
     uint32_t flower2 = 0;
-    for(int i=0;i<100;i++){
+    for(int i=0;i<ITTERATIONS;i++){
       wdt_reset();
       flower1 += analogRead(FLOWER_1_PIN);
       wdt_reset();
@@ -207,8 +208,8 @@ void flowerHandling(){
     }
     digitalWrite(FLOWER_POWER_1,LOW);
     digitalWrite(FLOWER_POWER_2,LOW);    
-    flowerValue1 += (flower1/100);
-    flowerValue2 += (flower2/100);
+    flowerValue1 += (flower1/ITTERATIONS);
+    flowerValue2 += (flower2/ITTERATIONS);
     flowerCounter++;
     
     if(flowerCounter > 200){
@@ -364,7 +365,9 @@ void get_flower(){
   char buf[100];
 
   if(flowerCounter > 0){
-    sprintf(buf, "%04d,%04d,", flowerValue1/flowerCounter,flowerValue2/flowerCounter);
+    uint16_t flower1 = (flowerValue1/flowerCounter);
+    uint16_t flower2 = (flowerValue2/flowerCounter);
+    sprintf(buf, "%04d,%04d,", flower1,flower2);
   }else{
     sprintf(buf, "%04d,%04d,", 0,0);
   }
